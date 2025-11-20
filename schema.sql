@@ -1,0 +1,10 @@
+-- schema.sql
+CREATE DATABASE IF NOT EXISTS users_db;
+USE users_db;
+
+CREATE TABLE IF NOT EXISTS users (
+  uuid VARCHAR(100) PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  city VARCHAR(255) NOT NULL
+);
