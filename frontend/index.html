@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>User Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Vuetify CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.6.15/dist/vuetify.min.css" rel="stylesheet">
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- Vue + Vuetify + Axios -->
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vuetify@2.6.15/dist/vuetify.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+  <script>
+    new Vue({
+      el: '#app',
+      vuetify: new Vuetify(),
+      data: () => ({
+        users: [],
+        loading: false,
+        search: '',
+        filterName: '',
+        filterEmail: '',
+        filterCity: '',
+        itemsPerPage: 25,
+        page: 1,
+        dialog: false,
+        editedUser: { uuid: '', name: '', email: '', city: '' },
+        saving: false,
+        headers: [
+          { text: 'Name', value: 'name' },
+          { text: 'Email', value: 'email' },
+          { text: 'City', value: 'city' },
+          { text: 'Action', value: 'action', sortable: false }
+        ]
+      }),
+
+      computed: {
+        filteredUsers() {
+          const nameF = this.filterName.trim().toLowerCase();
+          const emailF = this.filterEmail.trim().toLowerCase();
+          const cityF = this.filterCity.trim().toLowerCase();
+          return this.users.filter(u => {
+            const name = (u.name || '').toLowerCase();
+            const email = (u.email || '').toLowerCase();
+            const city = (u.city || '').toLowerCase();
+            return (!nameF || name.includes(nameF)) &&
+                   (!emailF || email.includes(emailF)) &&
+                   (!cityF || city.includes(cityF));
+          });
+        }
+      },
+
+      mounted() {
+        this.loadUsers();
+      },
+
+      methods: {
+        async loadUsers() {
+          this.loading = true;
+          try {
+            const res = await axios.get('http://localhost:3000/api/users');
+            this.users = Array.isArray(res.data) ? res.data : [];
+            this.page = 1;
+          } catch (e) {
+            console.error(e);
+            alert('Failed to load users');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async fetchUsersFromAPI() {
+          this.loading = true;
+          try {
+            await axios.post('http://localhost:3000/api/users/fetch');
+            await this.loadUsers();
+          } catch (e) {
+            console.error(e);
+            alert('Fetch failed');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        editUser(user) {
+          this.editedUser = { ...user };
+          this.dialog = true;
+        },
+
+        async saveUser() {
+          const { uuid, name, email, city } = this.editedUser;
+          if (!uuid || !name || !email || !city) {
+            alert('All fields are required');
+            return;
+          }
+          this.saving = true;
+          try {
+            await axios.put(`http://localhost:3000/api/users/${uuid}`, { name, email, city });
+            this.dialog = false;
+            const idx = this.users.findIndex(u => u.uuid === uuid);
+            if (idx !== -1) {
+              this.$set(this.users, idx, { ...this.users[idx], name, email, city });
+            }
+          } catch (e) {
+            console.error(e);
+            alert('Update failed');
+          } finally {
+            this.saving = false;
+          }
+        },
+
+        cancelEdit() {
+          this.dialog = false;
+          this.editedUser = { uuid: '', name: '', email: '', city: '' };
+        }
+      },
+
+      template: `
+        <v-app>
+          <v-container>
+            <v-btn color="primary" :loading="loading" @click="fetchUsersFromAPI">
+              Fetch 1000 Users
+            </v-btn>
+
+            <div class="mt-4">
+              <v-text-field v-model="search" label="Global Search" clearable></v-text-field>
+              <v-text-field v-model="filterName" label="Filter by Name" clearable></v-text-field>
+              <v-text-field v-model="filterEmail" label="Filter by Email" clearable></v-text-field>
+              <v-text-field v-model="filterCity" label="Filter by City" clearable></v-text-field>
+            </div>
+
+            <v-data-table
+              :headers="headers"
+              :items="filteredUsers"
+              :search="search"
+              :items-per-page="itemsPerPage"
+              :page.sync="page"
+              class="elevation-1 mt-4"
+              :loading="loading"
+            >
+              <template v-slot:item.action="{ item }">
+                <v-btn small color="blue" @click="editUser(item)">Edit</v-btn>
+              </template>
+            </v-data-table>
+
+            <v-dialog v-model="dialog" max-width="500px">
+              <v-card>
+                <v-card-title>Edit User</v-card-title>
+                <v-card-text>
+                  <v-text-field v-model="editedUser.name" label="Name"></v-text-field>
+                  <v-text-field v-model="editedUser.email" label="Email"></v-text-field>
+                  <v-text-field v-model="editedUser.city" label="City"></v-text-field>
+                </v-card-text>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn text @click="cancelEdit">Cancel</v-btn>
+                  <v-btn color="green" :loading="saving" @click="saveUser">Save</v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
+          </v-container>
+        </v-app>
+      `
+    });
+  </script>
+</body>
+</html>
