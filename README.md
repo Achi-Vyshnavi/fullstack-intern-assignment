@@ -36,8 +36,8 @@ Install dependencies:
 bash
 npm install
 Create .env file in project root:
-
-Code
+Example code:
+# .env.example
 DB_HOST=localhost
 DB_USER=root
 DB_PASS=your_mysql_password
